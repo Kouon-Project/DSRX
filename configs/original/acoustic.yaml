@@ -4,11 +4,10 @@ base_config:
 task_cls: training.acoustic_task.AcousticTask
 
 dictionaries:
-  zh: dictionaries/opencpop-extension-triple-2.txt
-  ja: dictionaries/jpn.txt
+all_phonemes: [AP, SP]
 extra_phonemes: []
-merged_phoneme_groups: 
-    - ['ja/Edge', 'ja/cl', 'zh/cl']
+merged_phoneme_groups:
+lang_phoneme_separator: [/]
 datasets: []
 
 vocoder: NsfHifiGAN
@@ -39,7 +38,7 @@ augmentation_args:
     range: [0.5, 2.]
     scale: 0.75
 
-binary_data_dir: 'data/opencpop/binary'
+binary_data_dir: 'data/xxx/binary'
 binarizer_cls: preprocessing.acoustic_binarizer.AcousticBinarizer
 spec_min: [-12]
 spec_max: [0]

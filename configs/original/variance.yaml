@@ -4,11 +4,10 @@ base_config:
 task_cls: training.variance_task.VarianceTask
 
 dictionaries:
-  zh: dictionaries/opencpop-extension-triple-2.txt
-  ja: dictionaries/jpn.txt
+all_phonemes: [AP, SP]
 extra_phonemes: []
-merged_phoneme_groups: 
-    - ['ja/Edge', 'ja/cl', 'zh/cl']
+merged_phoneme_groups:
+lang_phoneme_separator: [/]
 datasets: []
 
 audio_sample_rate: 44100
@@ -23,7 +22,7 @@ binarization_args:
   prefer_ds: false
   allow_missing_phonemes: true
 
-binary_data_dir: 'data/opencpop_variance/binary'
+binary_data_dir: 'data/xxx/binary'
 binarizer_cls: preprocessing.variance_binarizer.VarianceBinarizer
 
 use_lang_id: true

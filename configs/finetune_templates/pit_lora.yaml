@@ -1,39 +1,47 @@
 base_config:
 - configs/original/variance.yaml
+
 dictionaries:
-  en: data/pre/dictionaries/en.txt
-  ja: data/pre/dictionaries/ja.txt
-  ko: data/pre/dictionaries/ko.txt
-  zh: data/pre/dictionaries/zh.txt
+  zh: dictionaries/opencpop-extension.txt
+all_phonemes: [AP, SP]
 extra_phonemes:
-- br
-- vf
 merged_phoneme_groups: []
+lang_phoneme_separator: [/]
+
 datasets:
-- raw_data_dir: data/fu2_ning2_na4
-  speaker: fu2_ning2_na4
-  spk_id: 0
-  language: zh
-  test_prefixes:
-  - vo_FDAQ304_4_furina_23
-binary_data_dir: data/pre/binary/pit
+  - raw_data_dir: data/xxx1/raw
+    speaker: speaker1
+    spk_id: 0
+    language: zh
+    test_prefixes:
+    - wav1
+    - wav2
+    - wav3
+    - wav4
+    - wav5
+
+binary_data_dir: data/xxx/binary
 binarization_args:
   num_workers: 4
   allow_missing_phonemes: true
+
 pe: rmvpe
 pe_ckpt: ckpt/rmvpe/model.pt
 hnsep: vr
 hnsep_ckpt: ckpt/vr/model.pt
-use_lang_id: true
-num_lang: 4
-use_spk_id: true
+
+use_lang_id: false
+num_lang: 1
+use_spk_id: false
 num_spk: 1
+
 predict_dur: false
 predict_pitch: true
 predict_energy: false
 predict_breathiness: false
 predict_voicing: false
 predict_tension: false
+
 energy_db_min: -96.0
 energy_db_max: -12.0
 breathiness_db_min: -96.0
@@ -56,6 +64,7 @@ dur_prediction_args:
   lambda_pdur_loss: 0.3
   lambda_wdur_loss: 1.0
   lambda_sdur_loss: 3.0
+
 use_melody_encoder: true
 melody_encoder_args:
   hidden_size: 128
@@ -110,7 +119,7 @@ pl_trainer_precision: bf16-mixed
 
 lora:
   alpha: 16
-  base_ckpt: pretrained/pit.ckpt
+  base_ckpt: finetune_ckpt_path
   enabled: true
   merge_before_export: true
   rank: 8

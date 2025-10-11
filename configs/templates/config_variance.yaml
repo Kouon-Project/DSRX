@@ -3,6 +3,7 @@ base_config:
 
 dictionaries:
   zh: dictionaries/opencpop-extension.txt
+all_phonemes: [AP, SP]
 extra_phonemes: []
 merged_phoneme_groups: []
 
