@@ -5,7 +5,7 @@ from modules.nsf_hifigan.models import Generator
 
 
 # noinspection SpellCheckingInspection
-class NSFHiFiGANONNX(torch.nn.Module):
+class NSFHiFiGANNative(torch.nn.Module):
     def __init__(self, attrs: dict):
         super().__init__()
         self.generator = Generator(AttrDict(attrs))

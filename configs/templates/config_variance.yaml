@@ -70,6 +70,7 @@ enc_attention_type: normal
 use_rope: true
 hidden_size: 256
 dur_prediction_args:
+  type: deterministic
   arch: resnet
   hidden_size: 256
   dropout: 0.1
@@ -101,7 +102,7 @@ pitch_prediction_args:
   backbone_args:
     num_layers: 6
     num_channels: 512
-   dropout_rate: 0.0
+    dropout: 0.0
 
   # backbone_type: 'wavenet'
   # backbone_args:
@@ -115,7 +116,7 @@ variances_prediction_args:
   backbone_args:
     num_layers: 6
     num_channels: 384
-    dropout_rate: 0.0
+    dropout: 0.0
 
   # backbone_type: 'wavenet'
   # backbone_args:

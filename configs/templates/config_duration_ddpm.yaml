@@ -1,0 +1,25 @@
+base_config:
+  - ./config_duration_reflow.yaml
+
+dur_prediction_args:
+  type: ddpm
+  ddpm:
+    smoothing_frames: 0.5
+    logit_scale: 2.0
+    logit_clip: 5.0
+    min_frames: 1
+    max_group_size: 8
+    backbone_type: lynxnet2
+    backbone_args:
+      num_layers: 4
+      num_channels: 256
+      expansion_factor: 1
+      kernel_size: 15
+      dropout: 0.05
+    timesteps: 1000
+    schedule_type: cosine
+    sampling_algorithm: ddim
+    sampling_steps: 20
+    sampling_seed: 1234
+    validation_seed: 1234
+    loss_type: l2

@@ -644,6 +644,7 @@ def parse_args():
     parser.add_argument("--config", type=str, default="", help="Path to config yaml")
     parser.add_argument("--exp", type=str, default="", help="Experiment name under ckpt/")
     parser.add_argument("--hparams", type=str, default="", help="Override hparams, k=v,k2=v2")
+    parser.add_argument("--vocoder-ckpt", type=str, default="", help="Absolute packaged vocoder checkpoint override")
     parser.add_argument("--ckpt", type=int, default=None, help="Checkpoint step override")
     parser.add_argument("--batch-size", type=int, default=2, help="Max batch size for inference")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Bind host")
@@ -678,6 +679,8 @@ def main():
     if not args.exp:
         # A standalone saved config is expected to live beside its checkpoint.
         hparams["work_dir"] = str(config_path.resolve().parent)
+    if args.vocoder_ckpt:
+        hparams["vocoder_ckpt"] = str(Path(args.vocoder_ckpt).expanduser().resolve())
 
     backend = BatchInferenceBackend(
         batch_size=args.batch_size,

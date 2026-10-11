@@ -140,6 +140,7 @@ class DiffSingerVariance(CategorizedModule, ParameterAdaptorModule):
         self.fs2 = FastSpeech2Variance(
             vocab_size=vocab_size
         )
+        self.duration_type = self.fs2.duration_type
         self.rr = RhythmRegulator()
         self.lr = LengthRegulator()
         self.diffusion_type = hparams.get('diffusion_type', 'ddpm')
@@ -218,6 +219,10 @@ class DiffSingerVariance(CategorizedModule, ParameterAdaptorModule):
             txt_tokens, midi=midi, ph2word=ph2word,
             ph_dur=ph_dur, word_dur=word_dur,
             spk_embed=ph_spk_embed, languages=languages,
+            dur_noise=kwargs.get('dur_noise'),
+            dur_seed=kwargs.get('dur_seed'),
+            dur_reference=kwargs.get('dur_reference'),
+            dur_retake=kwargs.get('dur_retake'),
             infer=infer
         )
 
@@ -225,7 +230,10 @@ class DiffSingerVariance(CategorizedModule, ParameterAdaptorModule):
             return dur_pred_out, None, ({} if infer else None)
 
         if mel2ph is None and word_dur is not None:  # inference from file
-            dur_pred_align = self.rr(dur_pred_out, ph2word, word_dur)
+            if self.duration_type == 'deterministic':
+                dur_pred_align = self.rr(dur_pred_out, ph2word, word_dur)
+            else:
+                dur_pred_align = dur_pred_out
             mel2ph = self.lr(dur_pred_align)
             mel2ph = F.pad(mel2ph, [0, base_pitch.shape[1] - mel2ph.shape[1]])
 

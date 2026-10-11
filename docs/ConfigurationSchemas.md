@@ -465,6 +465,12 @@ Number of workers of `torch.utils.data.DataLoader`.
 
 Arguments for phoneme duration prediction.
 
+`type` selects `deterministic` (default), `ddpm`, or `reflow`. The deterministic
+predictor uses the existing flat settings below. DDPM and ReFlow read their
+respective nested sections, including backbone, codec and sampling settings.
+See [Duration models](DurationModels.md) and the duration templates under
+`configs/templates/` for complete examples.
+
 <table><tbody>
 <tr><td align="center"><b>type</b></td><td>dict</td>
 </tbody></table>

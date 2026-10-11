@@ -6,7 +6,6 @@ local_tools/
 *.ckpt
 *.pth
 infer_out/
-*.onnx
 /data/*
 !/data/.gitkeep
 /checkpoints/*
@@ -16,3 +15,12 @@ infer_out/
 
 .vscode
 .ipynb_checkpoints/
+
+/ckpt/
+/outputs/
+/release/
+*.pt
+*.log
+/opencode.json
+/configs/*_dirty.yaml
+/configs/local/

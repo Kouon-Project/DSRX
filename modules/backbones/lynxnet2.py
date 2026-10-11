@@ -94,8 +94,5 @@ class LYNXNet2(nn.Module):
         if self.n_feats == 1:
             x = x[:, None, :, :]
         else:
-            # This is the temporary solution since PyTorch 1.13
-            # does not support exporting aten::unflatten to ONNX
-            # x = x.unflatten(dim=1, sizes=(self.n_feats, self.in_dims))
             x = x.reshape(-1, self.n_feats, self.in_dims, x.shape[2])
         return x

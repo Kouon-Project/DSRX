@@ -145,6 +145,8 @@ class DiffSingerVarianceInfer(BaseSVSInfer):
         """
         batch = {}
         summary = OrderedDict()
+        if param.get('dur_seed') is not None:
+            batch['dur_seed'] = int(param['dur_seed'])
 
         tokens = param['ph_seq'].split()
         lang, phoneme_langs = self._resolve_language_config(tokens, param.get('lang'))
@@ -381,9 +383,11 @@ class DiffSingerVarianceInfer(BaseSVSInfer):
             note_midi=note_midi, note_rest=note_rest, note_dur=note_dur, note_glide=note_glide, mel2note=mel2note,
             base_pitch=base_pitch, pitch=pitch, pitch_expr=expr,
             ph_spk_mix_embed=ph_spk_mix_embed, spk_mix_embed=spk_mix_embed,
+            dur_noise=sample.get('dur_noise'), dur_seed=sample.get('dur_seed'),
+            dur_reference=sample.get('dur_reference'), dur_retake=sample.get('dur_retake'),
             infer=True
         )
-        if dur_pred is not None:
+        if dur_pred is not None and self.model.duration_type == 'deterministic':
             dur_pred = self.rr(dur_pred, ph2word, word_dur)
         if pitch_pred is not None:
             pitch_pred = base_pitch + pitch_pred

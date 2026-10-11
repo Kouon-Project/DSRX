@@ -31,13 +31,11 @@ class ResidualBlock(nn.Module):
 
         y = self.dilated_conv(y) + conditioner
 
-        # Using torch.split instead of torch.chunk to avoid using onnx::Slice
         gate, filter = torch.split(y, [self.residual_channels, self.residual_channels], dim=1)
         y = torch.sigmoid(gate) * torch.tanh(filter)
 
         y = self.output_projection(y)
 
-        # Using torch.split instead of torch.chunk to avoid using onnx::Slice
         residual, skip = torch.split(y, [self.residual_channels, self.residual_channels], dim=1)
         return (x + residual) / math.sqrt(2.0), skip
 
@@ -94,8 +92,5 @@ class WaveNet(nn.Module):
         if self.n_feats == 1:
             x = x[:, None, :, :]
         else:
-            # This is the temporary solution since PyTorch 1.13
-            # does not support exporting aten::unflatten to ONNX
-            # x = x.unflatten(dim=1, sizes=(self.n_feats, self.in_dims))
             x = x.reshape(-1, self.n_feats, self.in_dims, x.shape[2])
         return x

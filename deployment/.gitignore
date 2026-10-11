@@ -1,5 +1,4 @@
 *.ds
-*.onnx
 *.npy
 *.wav
 temp/

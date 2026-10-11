@@ -4,18 +4,10 @@ import math
 
 import torch
 import torch.nn.functional as F
-import torch.onnx.operators
 from torch import nn
 from torch.nn import LayerNorm, MultiheadAttention, ReLU, GELU, SiLU
 
 import utils
-
-try:
-    from torch.onnx import is_in_onnx_export
-except ImportError:  # pragma: no cover - older torch versions
-    def is_in_onnx_export() -> bool:
-        return False
-
 
 class NormalInitEmbedding(torch.nn.Embedding):
     def __init__(
@@ -116,8 +108,6 @@ class SwiGLU(nn.Module):
         self.dim = dim
 
     def forward(self, x):
-        # out, gate = x.chunk(2, dim=self.dim)
-        # Using torch.split instead of chunk for ONNX export compatibility.
         out, gate = torch.split(x, x.size(self.dim) // 2, dim=self.dim)
         gate = F.silu(gate)
         if x.dtype == torch.float16:
@@ -238,9 +228,6 @@ class MultiheadSelfAttentionWithRoPE(nn.Module):
         return output
 
     def _flash_attention(self, Q, K, V, key_padding_mask=None):
-        if is_in_onnx_export():
-            return self._standard_attention(Q, K, V, key_padding_mask)
-
         batch_size = Q.size(0)
         seq_len = Q.size(2)
 

@@ -105,63 +105,13 @@ inference-only checkpoint format.
 
 ## Deployment
 
-DiffSinger uses [ONNX](https://onnx.ai/) as the deployment format.
-
-Due to TorchScript issues, exporting to ONNX now requires PyTorch **1.13**. Please ensure the correct dependencies through following steps:
-
-1. Create a new separate environment for exporting ONNX.
-
-2. Install PyTorch 1.13 following the [official instructions](https://pytorch.org/get-started/previous-versions/). A CPU-only version is enough.
-
-3. Install other dependencies via the following command:
-
-   ```bash
-   pip install -r requirements-onnx.txt
-   ```
-
-Assume that you have a model named `my_experiment`.
-
-If your model is a variance model, run:
+DSRX exports TorchScript packages for the OpenUtau DSRX LibTorch backend.
 
 ```bash
-python scripts/export.py variance --exp my_experiment
+python scripts/export_openutau.py --exp my_experiment --out release/my_voice --device portable --no-include-python-checkpoint
 ```
 
-or run
-
-```bash
-python scripts/export.py variance --help
-```
-
-for more configurable options.
-
-If your model is an acoustic model, run:
-
-```bash
-python scripts/export.py acoustic --exp my_experiment
-```
-
-or run
-
-```bash
-python scripts/export.py acoustic --help
-```
-
-for more configurable options.
-
-To export an NSF-HiFiGAN vocoder checkpoint, run:
-
-```bash
-python scripts/export.py nsf-hifigan --config CONFIG --ckpt CKPT
-```
-
-where `CONFIG` is a configuration file that has configured the same mel parameters as the vocoder (can be configs/original/acoustic.yaml for most cases) and `CKPT` is the path of the checkpoint to be exported.
-
-For more configurable options, run
-
-```bash
-python scripts/export.py nsf-hifigan --help
-```
+The package contains model modules, dictionaries, speaker embeddings and editor configuration. See [OpenUtau native export](OpenUtauNativeBackend.md) for duration, variance and vocoder options, and [single-speaker export](SpeakerLockedNativeExport.md) for fixed-speaker releases.
 
 ## Other utilities
 

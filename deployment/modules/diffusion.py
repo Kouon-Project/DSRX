@@ -15,7 +15,7 @@ def extract(a, t):
 
 
 # noinspection PyMethodOverriding
-class GaussianDiffusionONNX(GaussianDiffusion):
+class GaussianDiffusionNative(GaussianDiffusion):
     @property
     def backbone(self):
         return self.denoise_fn
@@ -161,7 +161,7 @@ class GaussianDiffusionONNX(GaussianDiffusion):
         return x
 
 
-class PitchDiffusionONNX(GaussianDiffusionONNX, PitchDiffusion):
+class PitchDiffusionNative(GaussianDiffusionNative, PitchDiffusion):
     def __init__(self, vmin: float, vmax: float,
                  cmin: float, cmax: float, repeat_bins,
                  timesteps=1000, k_step=1000,
@@ -189,7 +189,7 @@ class PitchDiffusionONNX(GaussianDiffusionONNX, PitchDiffusion):
         return x
 
 
-class MultiVarianceDiffusionONNX(GaussianDiffusionONNX, MultiVarianceDiffusion):
+class MultiVarianceDiffusionNative(GaussianDiffusionNative, MultiVarianceDiffusion):
     def __init__(
             self, ranges: List[Tuple[float, float]],
             clamps: List[Tuple[float | None, float | None] | None],

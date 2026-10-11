@@ -9,7 +9,7 @@ from modules.core import (
 )
 
 
-class RectifiedFlowONNX(RectifiedFlow):
+class RectifiedFlowNative(RectifiedFlow):
     @property
     def backbone(self):
         return self.velocity_fn
@@ -68,7 +68,7 @@ class RectifiedFlowONNX(RectifiedFlow):
         return x
 
 
-class PitchRectifiedFlowONNX(RectifiedFlowONNX, PitchRectifiedFlow):
+class PitchRectifiedFlowNative(RectifiedFlowNative, PitchRectifiedFlow):
     def __init__(self, vmin: float, vmax: float,
                  cmin: float, cmax: float, repeat_bins,
                  time_scale_factor=1000,
@@ -94,7 +94,7 @@ class PitchRectifiedFlowONNX(RectifiedFlowONNX, PitchRectifiedFlow):
         return x
 
 
-class MultiVarianceRectifiedFlowONNX(RectifiedFlowONNX, MultiVarianceRectifiedFlow):
+class MultiVarianceRectifiedFlowNative(RectifiedFlowNative, MultiVarianceRectifiedFlow):
     def __init__(
             self, ranges: List[Tuple[float, float]],
             clamps: List[Tuple[float | None, float | None] | None],

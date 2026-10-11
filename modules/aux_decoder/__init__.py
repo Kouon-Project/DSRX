@@ -59,9 +59,6 @@ class AuxDecoderAdaptor(nn.Module):
         x = self.decoder(condition, infer=infer)  # [B, T, F x C]
 
         if self.n_feats > 1:
-            # This is the temporary solution since PyTorch 1.13
-            # does not support exporting aten::unflatten to ONNX
-            # x = x.unflatten(dim=2, sizes=(self.n_feats, self.in_dims))
             x = x.reshape(-1, x.shape[1], self.n_feats, self.out_dims)  # [B, T, F, C]
             x = x.transpose(1, 2)  # [B, F, T, C]
         if infer:

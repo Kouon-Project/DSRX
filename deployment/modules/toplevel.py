@@ -7,27 +7,27 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from deployment.modules.diffusion import (
-    GaussianDiffusionONNX, PitchDiffusionONNX, MultiVarianceDiffusionONNX
+    GaussianDiffusionNative, PitchDiffusionNative, MultiVarianceDiffusionNative
 )
 from deployment.modules.rectified_flow import (
-    RectifiedFlowONNX, PitchRectifiedFlowONNX, MultiVarianceRectifiedFlowONNX
+    RectifiedFlowNative, PitchRectifiedFlowNative, MultiVarianceRectifiedFlowNative
 )
-from deployment.modules.fastspeech2 import FastSpeech2AcousticONNX, FastSpeech2VarianceONNX
+from deployment.modules.fastspeech2 import FastSpeech2AcousticNative, FastSpeech2VarianceNative
 from modules.toplevel import DiffSingerAcoustic, DiffSingerVariance
 from utils.hparams import hparams
 
 
-class DiffSingerAcousticONNX(DiffSingerAcoustic):
+class DiffSingerAcousticNative(DiffSingerAcoustic):
     def __init__(self, vocab_size, out_dims, cross_lingual_token_idx=None):
         super().__init__(vocab_size, out_dims)
         del self.fs2
         del self.diffusion
-        self.fs2 = FastSpeech2AcousticONNX(
+        self.fs2 = FastSpeech2AcousticNative(
             vocab_size=vocab_size,
             cross_lingual_token_idx=cross_lingual_token_idx
         )
         if self.diffusion_type == 'ddpm':
-            self.diffusion = GaussianDiffusionONNX(
+            self.diffusion = GaussianDiffusionNative(
                 out_dims=out_dims,
                 num_feats=1,
                 timesteps=hparams['timesteps'],
@@ -38,7 +38,7 @@ class DiffSingerAcousticONNX(DiffSingerAcoustic):
                 spec_max=hparams['spec_max']
             )
         elif self.diffusion_type == 'reflow':
-            self.diffusion = RectifiedFlowONNX(
+            self.diffusion = RectifiedFlowNative(
                 out_dims=out_dims,
                 num_feats=1,
                 t_start=hparams['T_start'],
@@ -129,11 +129,11 @@ class DiffSingerAcousticONNX(DiffSingerAcoustic):
         return model
 
 
-class DiffSingerVarianceONNX(DiffSingerVariance):
+class DiffSingerVarianceNative(DiffSingerVariance):
     def __init__(self, vocab_size, cross_lingual_token_idx=None):
         super().__init__(vocab_size=vocab_size)
         del self.fs2
-        self.fs2 = FastSpeech2VarianceONNX(
+        self.fs2 = FastSpeech2VarianceNative(
             vocab_size=vocab_size,
             cross_lingual_token_idx=cross_lingual_token_idx
         )
@@ -143,7 +143,7 @@ class DiffSingerVarianceONNX(DiffSingerVariance):
             self.smooth: nn.Conv1d = None
             pitch_hparams = hparams['pitch_prediction_args']
             if self.diffusion_type == 'ddpm':
-                self.pitch_predictor = PitchDiffusionONNX(
+                self.pitch_predictor = PitchDiffusionNative(
                     vmin=pitch_hparams['pitd_norm_min'],
                     vmax=pitch_hparams['pitd_norm_max'],
                     cmin=pitch_hparams['pitd_clip_min'],
@@ -155,7 +155,7 @@ class DiffSingerVarianceONNX(DiffSingerVariance):
                     backbone_args=self.pitch_backbone_args
                 )
             elif self.diffusion_type == 'reflow':
-                self.pitch_predictor = PitchRectifiedFlowONNX(
+                self.pitch_predictor = PitchRectifiedFlowNative(
                     vmin=pitch_hparams['pitd_norm_min'],
                     vmax=pitch_hparams['pitd_norm_max'],
                     cmin=pitch_hparams['pitd_clip_min'],
@@ -170,9 +170,9 @@ class DiffSingerVarianceONNX(DiffSingerVariance):
         if self.predict_variances:
             del self.variance_predictor
             if self.diffusion_type == 'ddpm':
-                self.variance_predictor = self.build_adaptor(cls=MultiVarianceDiffusionONNX)
+                self.variance_predictor = self.build_adaptor(cls=MultiVarianceDiffusionNative)
             elif self.diffusion_type == 'reflow':
-                self.variance_predictor = self.build_adaptor(cls=MultiVarianceRectifiedFlowONNX)
+                self.variance_predictor = self.build_adaptor(cls=MultiVarianceRectifiedFlowNative)
             else:
                 raise NotImplementedError(self.diffusion_type)
 

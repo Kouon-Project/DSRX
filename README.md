@@ -17,7 +17,11 @@ This is a refactored and enhanced version of _DiffSinger: Singing Voice Synthesi
 
 ## User Guidance
 
-Still Working...
+- [Getting started](docs/GettingStarted.md)
+- [Duration models: deterministic, DDPM and ReFlow](docs/DurationModels.md)
+- [OpenUtau native export](docs/OpenUtauNativeBackend.md)
+- [Single-speaker native export](docs/SpeakerLockedNativeExport.md)
+- [Native inference optimization](docs/InferenceOptimization.md)
 
 ## Architecture & Algorithms
 

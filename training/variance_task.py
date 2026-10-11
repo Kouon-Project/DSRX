@@ -8,9 +8,28 @@ import utils
 import utils.infer_utils
 from basics.base_dataset import BaseDataset
 from basics.base_task import BaseTask
+from modules.duration import (
+    DurationDiffusionLoss,
+    DurationRectifiedFlowLoss,
+    GENERATIVE_DURATION_TYPES,
+    get_duration_type,
+    get_duration_type_config,
+    make_indexed_duration_noise,
+)
+from modules.fastspeech.tts_modules import RhythmRegulator
 from modules.losses import DurationLoss, DiffusionLoss, RectifiedFlowLoss
 from modules.metrics import (
-    RawCurveAccuracy, RawCurveR2Score, RhythmCorrectness, PhonemeDurationAccuracy
+    DurationAllocationScore,
+    InvalidDurationRate,
+    MultiPhonemeDurationAccuracy,
+    PhonemeBoundaryAccuracy,
+    PhonemeBoundaryMAE,
+    PhonemeDurationAccuracy,
+    RawCurveAccuracy,
+    RawCurveR2Score,
+    RhythmCorrectness,
+    WordDurationConstraintMaxError,
+    WordDurationConstraintViolationRate,
 )
 from modules.toplevel import DiffSingerVariance
 from utils.hparams import hparams
@@ -93,6 +112,11 @@ class VarianceTask(BaseTask):
         self.predict_dur = hparams['predict_dur']
         if self.predict_dur:
             self.lambda_dur_loss = hparams['lambda_dur_loss']
+            self.duration_hparams = hparams['dur_prediction_args']
+            self.duration_type = get_duration_type(self.duration_hparams)
+            self.duration_type_hparams = get_duration_type_config(
+                self.duration_hparams, self.duration_type
+            )
 
         self.predict_pitch = hparams['predict_pitch']
         if self.predict_pitch:
@@ -123,17 +147,65 @@ class VarianceTask(BaseTask):
     # noinspection PyAttributeOutsideInit
     def build_losses_and_metrics(self):
         if self.predict_dur:
-            dur_hparams = hparams['dur_prediction_args']
-            self.dur_loss = DurationLoss(
-                offset=dur_hparams['log_offset'],
-                loss_type=dur_hparams['loss_type'],
-                lambda_pdur=dur_hparams['lambda_pdur_loss'],
-                lambda_wdur=dur_hparams['lambda_wdur_loss'],
-                lambda_sdur=dur_hparams['lambda_sdur_loss']
-            )
+            dur_hparams = self.duration_type_hparams
+            if self.duration_type == 'deterministic':
+                self.dur_loss = DurationLoss(
+                    offset=dur_hparams['log_offset'],
+                    loss_type=dur_hparams['loss_type'],
+                    lambda_pdur=dur_hparams['lambda_pdur_loss'],
+                    lambda_wdur=dur_hparams['lambda_wdur_loss'],
+                    lambda_sdur=dur_hparams['lambda_sdur_loss']
+                )
+            elif self.duration_type == 'ddpm':
+                self.dur_loss = DurationDiffusionLoss(
+                    loss_type=dur_hparams.get('loss_type', 'l2')
+                )
+            elif self.duration_type == 'reflow':
+                self.dur_loss = DurationRectifiedFlowLoss(
+                    loss_type=dur_hparams.get('loss_type', 'l2'),
+                    log_norm=dur_hparams.get('loss_log_norm', True)
+                )
+            else:
+                raise ValueError(f'Unknown duration model type: {self.duration_type}')
             self.register_validation_loss('dur_loss')
-            self.register_validation_metric('rhythm_corr', RhythmCorrectness(tolerance=0.05))
+            if self.duration_type == 'deterministic':
+                # The deterministic predictor estimates raw word sums, so this
+                # remains a meaningful pre-regulation quality metric for it.
+                self.register_validation_metric('rhythm_corr', RhythmCorrectness(tolerance=0.05))
+            else:
+                # Track whether decoded durations meet the supplied word budgets.
+                self.register_validation_metric(
+                    'constraint/word_sum_violation_rate',
+                    WordDurationConstraintViolationRate(tolerance_frames=0.)
+                )
+                self.register_validation_metric(
+                    'constraint/word_sum_max_error_frames',
+                    WordDurationConstraintMaxError()
+                )
+                self.register_validation_metric(
+                    'constraint/invalid_duration_rate',
+                    InvalidDurationRate()
+                )
+
+            frame_ms = 1000. * hparams['hop_size'] / hparams['audio_sample_rate']
+            # The historical curve includes both single-phone and multi-phone words.
             self.register_validation_metric('ph_dur_acc', PhonemeDurationAccuracy(tolerance=0.2))
+            self.register_validation_metric(
+                'duration/boundary_mae_ms_multi',
+                PhonemeBoundaryMAE(frame_scale=frame_ms)
+            )
+            self.register_validation_metric(
+                'duration/boundary_acc_2f_multi',
+                PhonemeBoundaryAccuracy(tolerance_frames=2.)
+            )
+            self.register_validation_metric(
+                'duration/allocation_score_multi',
+                DurationAllocationScore()
+            )
+            self.register_validation_metric(
+                'duration/ph_dur_acc_multi',
+                MultiPhonemeDurationAccuracy(relative_tolerance=0.2, absolute_tolerance=2.)
+            )
         if self.predict_pitch:
             if self.diffusion_type == 'ddpm':
                 self.pitch_loss = DiffusionLoss(loss_type=hparams['main_loss_type'])
@@ -159,7 +231,7 @@ class VarianceTask(BaseTask):
             for name in self.variance_prediction_list:
                 self.register_validation_metric(f'{name}_r2', RawCurveR2Score())            
 
-    def run_model(self, sample, infer=False):
+    def run_model(self, sample, infer=False, dur_noise=None, dur_seed=None):
         spk_ids = sample['spk_ids'] if self.use_spk_id else None  # [B,]
         languages = sample['languages'] if self.use_lang_id else None  # [B,]
         txt_tokens = sample['tokens']  # [B, T_ph]
@@ -204,7 +276,8 @@ class VarianceTask(BaseTask):
             base_pitch=base_pitch, pitch=pitch,
             energy=energy, breathiness=breathiness, voicing=voicing, tension=tension,
             pitch_retake=pitch_retake, variance_retake=variance_retake,
-            spk_id=spk_ids, infer=infer
+            spk_id=spk_ids, infer=infer,
+            dur_noise=dur_noise, dur_seed=dur_seed
         )
 
         dur_pred, pitch_pred, variances_pred = output
@@ -215,7 +288,26 @@ class VarianceTask(BaseTask):
         else:
             losses = {}
             if dur_pred is not None:
-                losses['dur_loss'] = self.lambda_dur_loss * self.dur_loss(dur_pred, ph_dur, ph2word=ph2word)
+                if self.duration_type == 'deterministic':
+                    duration_loss = self.dur_loss(dur_pred, ph_dur, ph2word=ph2word)
+                elif self.duration_type == 'ddpm':
+                    duration_loss = self.dur_loss(
+                        dur_pred['prediction'],
+                        dur_pred['target'],
+                        ph2word=ph2word,
+                        active_mask=dur_pred['active_mask']
+                    )
+                elif self.duration_type == 'reflow':
+                    duration_loss = self.dur_loss(
+                        dur_pred['prediction'],
+                        dur_pred['target'],
+                        t=dur_pred['t'],
+                        ph2word=ph2word,
+                        active_mask=dur_pred['active_mask']
+                    )
+                else:
+                    raise ValueError(f'Unknown duration model type: {self.duration_type}')
+                losses['dur_loss'] = self.lambda_dur_loss * duration_loss
             non_padding = (mel2ph > 0).unsqueeze(-1) if mel2ph is not None else None
             if pitch_pred is not None:
                 if self.diffusion_type == 'ddpm':
@@ -248,29 +340,93 @@ class VarianceTask(BaseTask):
 
             return losses
 
+    def _make_validation_duration_noise(self, sample):
+        if not self.predict_dur or self.duration_type not in GENERATIVE_DURATION_TYPES:
+            return None
+        configured_seed = self.duration_type_hparams.get(
+            'validation_seed', self.duration_type_hparams.get('sampling_seed', 1234)
+        )
+        base_seed = 1234 if configured_seed is None else int(configured_seed)
+        return make_indexed_duration_noise(
+            sample['indices'],
+            sample['tokens'].shape[1],
+            base_seed=base_seed,
+            device=sample['tokens'].device
+        )
+
+    @staticmethod
+    def _regulate_duration_for_quality(pdur_pred, pdur_target, ph2word):
+        shape = pdur_target.shape[0], int(ph2word.max().item()) + 1
+        word_dur_target = pdur_target.new_zeros(*shape).scatter_add(
+            1, ph2word, pdur_target
+        )[:, 1:]
+        return RhythmRegulator()(pdur_pred, ph2word=ph2word, word_dur=word_dur_target)
+
+    def _update_duration_metrics(self, pdur_pred, pdur_target, ph2word, mask):
+        if self.duration_type == 'deterministic':
+            self.valid_metrics['rhythm_corr'].update(
+                pdur_pred=pdur_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+            )
+            quality_pred = self._regulate_duration_for_quality(pdur_pred, pdur_target, ph2word)
+        else:
+            self.valid_metrics['constraint/word_sum_violation_rate'].update(
+                pdur_pred=pdur_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+            )
+            self.valid_metrics['constraint/word_sum_max_error_frames'].update(
+                pdur_pred=pdur_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+            )
+            self.valid_metrics['constraint/invalid_duration_rate'].update(
+                pdur_pred=pdur_pred, ph2word=ph2word, mask=mask
+            )
+            quality_pred = pdur_pred
+
+        self.valid_metrics['ph_dur_acc'].update(
+            pdur_pred=pdur_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+        )
+        self.valid_metrics['duration/boundary_mae_ms_multi'].update(
+            pdur_pred=quality_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+        )
+        self.valid_metrics['duration/boundary_acc_2f_multi'].update(
+            pdur_pred=quality_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+        )
+        self.valid_metrics['duration/allocation_score_multi'].update(
+            pdur_pred=quality_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+        )
+        self.valid_metrics['duration/ph_dur_acc_multi'].update(
+            pdur_pred=quality_pred, pdur_target=pdur_target, ph2word=ph2word, mask=mask
+        )
+
     def _validation_step(self, sample, batch_idx):
         losses = self.run_model(sample, infer=False)
-        if min(sample['indices']) < hparams['num_valid_plots']:
+        sample_indices = [int(index) for index in sample['indices']]
+        should_plot_batch = min(sample_indices) < hparams['num_valid_plots']
+        # Evaluate duration across the validation set and plot the selected samples.
+        if self.predict_dur or should_plot_batch:
             def sample_get(key, idx, abs_idx):
                 return sample[key][idx][:self.valid_dataset.metadata[key][abs_idx]].unsqueeze(0)
 
-            dur_preds, pitch_preds, variances_preds = self.run_model(sample, infer=True)
-            for i in range(len(sample['indices'])):
-                data_idx = sample['indices'][i]
-                if data_idx < hparams['num_valid_plots']:
+            dur_noise = self._make_validation_duration_noise(sample)
+            dur_preds, pitch_preds, variances_preds = self.run_model(
+                sample, infer=True, dur_noise=dur_noise
+            )
+            if dur_preds is not None:
+                duration_len = sample['ph_dur'].shape[1]
+                duration_pred = dur_preds[:, :duration_len]
+                duration_target = sample['ph_dur']
+                duration_ph2word = sample['ph2word']
+                duration_mask = sample['tokens'] != 0
+                self._update_duration_metrics(
+                    duration_pred, duration_target, duration_ph2word, duration_mask
+                )
+
+            if should_plot_batch:
+                for i, data_idx in enumerate(sample_indices):
+                    if data_idx >= hparams['num_valid_plots']:
+                        continue
                     if dur_preds is not None:
                         dur_len = self.valid_dataset.metadata['ph_dur'][data_idx]
-                        tokens = sample_get('tokens', i, data_idx)
                         gt_dur = sample_get('ph_dur', i, data_idx)
                         pred_dur = dur_preds[i][:dur_len].unsqueeze(0)
-                        ph2word = sample_get('ph2word', i, data_idx)
-                        mask = tokens != 0
-                        self.valid_metrics['rhythm_corr'].update(
-                            pdur_pred=pred_dur, pdur_target=gt_dur, ph2word=ph2word, mask=mask
-                        )
-                        self.valid_metrics['ph_dur_acc'].update(
-                            pdur_pred=pred_dur, pdur_target=gt_dur, ph2word=ph2word, mask=mask
-                        )
                         self.plot_dur(
                             data_idx, gt_dur, pred_dur,
                             txt=self.valid_dataset.metadata['ph_texts'][data_idx].split()

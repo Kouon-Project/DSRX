@@ -40,7 +40,7 @@ class LengthRegulator(nn.Module):
         return mel2ph
 
 
-class FastSpeech2AcousticONNX(FastSpeech2Acoustic):
+class FastSpeech2AcousticNative(FastSpeech2Acoustic):
     def __init__(self, vocab_size, cross_lingual_token_idx=None):
         super().__init__(vocab_size=vocab_size)
         self.register_buffer(
@@ -137,7 +137,7 @@ class FastSpeech2AcousticONNX(FastSpeech2Acoustic):
         return condition
 
 
-class FastSpeech2VarianceONNX(FastSpeech2Variance):
+class FastSpeech2VarianceNative(FastSpeech2Variance):
     def __init__(self, vocab_size, cross_lingual_token_idx=None):
         super().__init__(vocab_size=vocab_size)
         self.register_buffer(

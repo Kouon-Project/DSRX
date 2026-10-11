@@ -1,0 +1,47 @@
+base_config:
+  - ./config_variance.yaml
+
+datasets:
+  - raw_data_dir: data/my_singer/raw
+    speaker: singer
+    spk_id: 0
+    language: zh
+    test_prefixes:
+      - validation_song
+binary_data_dir: data/my_singer/duration_binary
+
+predict_dur: true
+predict_pitch: false
+predict_energy: false
+predict_breathiness: false
+predict_voicing: false
+predict_tension: false
+
+dur_prediction_args:
+  type: reflow
+  reflow:
+    smoothing_frames: 0.5
+    logit_scale: 2.0
+    logit_clip: 5.0
+    min_frames: 1
+    max_group_size: 8
+    backbone_type: lynxnet2
+    backbone_args:
+      num_layers: 4
+      num_channels: 256
+      expansion_factor: 1
+      kernel_size: 15
+      dropout: 0.05
+    time_scale_factor: 1000
+    sampling_algorithm: rk2
+    sampling_steps: 8
+    sampling_seed: 1234
+    validation_seed: 1234
+    loss_type: l2
+    loss_log_norm: true
+
+finetune_enabled: false
+finetune_ckpt_path: null
+freezing_enabled: false
+lora:
+  enabled: false

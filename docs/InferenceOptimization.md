@@ -2,7 +2,7 @@
 
 Native acoustic and variance inference share the same CUDA optimization path.
 It is enabled by default for both `scripts/infer.py` and
-`inference/batch_backend.py`; ONNX export is unchanged.
+`inference/batch_backend.py`. Native voicebank export is described in [OpenUtau native export](OpenUtauNativeBackend.md).
 
 The native vocoder path is optimized as well. `NsfHifiGAN` keeps F0 phase
 generation in FP32 while storing and executing its convolutional generator in
@@ -78,7 +78,7 @@ python scripts/export_inference_ckpt.py --exp my_experiment --ckpt 152000
 
 The default output is written beside the source as
 `model_ckpt_steps_152000.infer.ckpt`. Native inference automatically prefers
-that file over `model_ckpt_steps_152000.ckpt`; training and ONNX export retain
+that file over `model_ckpt_steps_152000.ckpt`; training and native export retain
 their existing checkpoint selection behavior.
 
 An export to a separate directory copies the adjacent YAML, JSON and TXT model

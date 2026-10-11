@@ -108,7 +108,7 @@ class GaussianDiffusion(nn.Module):
         self.register_buffer('spec_min', spec_min)
         self.register_buffer('spec_max', spec_max)
 
-        # for compatibility with ONNX continuous acceleration
+        # Sampling bounds and supported timestep factors.
         self.time_scale_factor = self.timesteps
         self.t_start = 1 - self.k_step / self.timesteps
         factors = torch.LongTensor([i for i in range(1, self.timesteps + 1) if self.timesteps % i == 0])
